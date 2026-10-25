@@ -88,3 +88,5 @@ The project's own context — stack, architecture, domain — is elsewhere in th
 in `AGENTS.md`, and not in any one tool's file, on purpose: it is tool-agnostic and comes along
 unchanged when the pipeline is ported to another agent.
 <!-- END DAW -->
+
+<!-- daw:declined FEAT-001 domain-glossary -->
