@@ -123,3 +123,28 @@ form button {
 [role="alert"] {
     color: #b42318;
 }
+
+/* Registro de cumplimiento (NFR-04): el formulario ocupa el ancho de la instancia. */
+.mensaje {
+    margin: 1rem 0;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #b42318;
+    border-radius: 0.5rem;
+    background: #fff;
+}
+
+.cumplido {
+    display: inline-block;
+    margin-left: 0.5rem;
+}
+
+[data-formulario-cumplimiento] {
+    width: 100%;
+    margin: 0.5rem 0;
+}
+
+[data-formulario-cumplimiento] > a {
+    display: block;
+    padding: 0.5rem 0;
+    text-align: center;
+}

@@ -1,0 +1,51 @@
+@using PetCare.Features.EstadoDelDia.Domain
+@model PetCare.Features.EstadoDelDia.Domain.EstadoDelDiaVista
+
+<div id="estado-del-dia" data-testid="estado-del-dia">
+    @if (Model.Mensaje is not null)
+    {
+        <p class="mensaje" data-testid="mensaje" role="alert">@Model.Mensaje</p>
+    }
+    @foreach (var seccion in Model.Estado.Secciones)
+    {
+        <section class="seccion" data-testid="seccion-@seccion.MascotaId">
+            <h2 data-testid="nombre-mascota">@seccion.Nombre</h2>
+            @if (seccion.SinTareasPendientes)
+            {
+                <p data-testid="sin-tareas">No hay tareas pendientes.</p>
+            }
+            else
+            {
+                <ul class="instancias">
+                    @foreach (var instancia in seccion.Instancias)
+                    {
+                        var rutaFormulario = $"/?handler=FormularioCumplimiento&instanciaId={instancia.Id}";
+                        <li data-testid="instancia" data-instancia-id="@instancia.Id">
+                            <span data-testid="texto-instancia">@TextosEstadoDelDia.Instancia(instancia)</span>
+                            @if (instancia.Pendiente)
+                            {
+                                <span class="marca-pendiente" data-testid="marca-pendiente">pendiente</span>
+                            }
+                            @if (Model.Formulario is { } formulario && formulario.InstanciaId == instancia.Id)
+                            {
+                                <partial name="_formulario-cumplimiento" model="formulario" />
+                            }
+                            else
+                            {
+                                <a class="cumplido" href="@rutaFormulario" data-testid="cumplido"
+                                   hx-get="@rutaFormulario" hx-target="#estado-del-dia" hx-swap="outerHTML"
+                                   hx-sync="closest #estado-del-dia:replace">Cumplido</a>
+                            }
+                        </li>
+                    }
+                </ul>
+            }
+            <ul class="resumen">
+                <li data-testid="paseos-hoy">@TextosEstadoDelDia.Paseos(seccion.PaseosHoy)</li>
+                <li data-testid="ultima-comida">@TextosEstadoDelDia.UltimaComida(seccion.UltimaComida)</li>
+                <li data-testid="ultimo-paseo">@TextosEstadoDelDia.UltimoPaseo(seccion.UltimoPaseo)</li>
+            </ul>
+            <p><a href="/mascotas/@seccion.MascotaId/deberes" data-testid="configurar-deberes">Configurar deberes</a></p>
+        </section>
+    }
+</div>

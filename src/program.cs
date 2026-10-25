@@ -22,6 +22,7 @@ builder.Services.AddSingleton<GeneracionLock>();
 builder.Services.AddScoped<MascotasService>();
 builder.Services.AddScoped<DeberesService>();
 builder.Services.AddScoped<InstanciasService>();
+builder.Services.AddScoped<RegistrosService>();
 builder.Services.AddScoped<EstadoDelDiaService>();
 builder.Services.AddHostedService<GeneracionDiariaWorker>();
 
