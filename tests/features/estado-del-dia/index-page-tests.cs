@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using PetCare.Features.Deberes.Data;
+using PetCare.Features.Deberes.Domain;
 using PetCare.Features.Hogar.Domain;
 using PetCare.Features.Instancias.Data;
 using PetCare.Shared.Data;
@@ -237,6 +238,73 @@ public sealed class IndexPageTests : IDisposable
         var seccion = Seccion(documento, id);
         Assert.Equal("<b>x</b>", Texto(seccion, "nombre-mascota"));
         Assert.Empty(seccion.QuerySelectorAll("b"));
+    }
+
+    [Fact]
+    public async Task Index_ConRegistroDeHoy_MuestraRegistroConEliminar()
+    {
+        await Alta(Firulais, "paseo", "18:00", "solo-hoy");
+        var instanciaId = await IdDeInstancia(Hoy);
+        IrALocal(Hoy, 9, 10);
+        int registroId;
+        using (var scope = factory.Services.CreateScope())
+        {
+            var resultado = await scope.ServiceProvider.GetRequiredService<RegistrosService>()
+                .RegistrarAsync(instanciaId, "09:05", CancellationToken.None);
+            Assert.True(resultado.EsOk);
+            registroId = resultado.Valor;
+        }
+
+        var documento = await GetIndex();
+
+        var registro = Assert.Single(Seccion(documento, Firulais).QuerySelectorAll("[data-testid=registro]"));
+        var id = registroId.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        Assert.Equal(id, registro.GetAttribute("data-registro-id"));
+        Assert.Equal("Paseo · 09:05", Texto(registro, "texto-registro"));
+        var formulario = Assert.Single(registro.QuerySelectorAll("form"));
+        Assert.Equal("post", formulario.GetAttribute("method"), ignoreCase: true);
+        Assert.Equal("/?handler=EliminarRegistro", formulario.GetAttribute("action"));
+        Assert.Equal("/?handler=EliminarRegistro", formulario.GetAttribute("hx-post"));
+        Assert.Equal("#estado-del-dia", formulario.GetAttribute("hx-target"));
+        Assert.Equal("outerHTML", formulario.GetAttribute("hx-swap"));
+        Assert.Equal("closest #estado-del-dia:replace", formulario.GetAttribute("hx-sync"));
+        Assert.Equal(id, formulario.QuerySelector("input[type=hidden][name=registroId]")?.GetAttribute("value"));
+        Assert.Single(formulario.QuerySelectorAll("input[type=hidden][name=__RequestVerificationToken]"));
+        var eliminar = Assert.Single(formulario.QuerySelectorAll("button[type=submit][data-testid=eliminar-registro]"));
+        Assert.Equal("Eliminar", eliminar.TextContent.Trim());
+        Assert.Empty(Seccion(documento, Michi).QuerySelectorAll("[data-testid=registro]"));
+    }
+
+    [Fact]
+    public async Task Index_ConRegistrosDeHoyYAyer_MuestraResumen()
+    {
+        var ayer = Hoy.AddDays(-1);
+        var anteayer = Hoy.AddDays(-2);
+        // Una instancia por registro (índice único); la comida de ayer a las 22:00 es más tardía en
+        // la hora pero anterior en el día que la de hoy a las 13:00.
+        RegistroDirecto(TipoDeber.Comida, anteayer, new TimeOnly(23, 0));
+        RegistroDirecto(TipoDeber.Comida, ayer, new TimeOnly(22, 0));
+        RegistroDirecto(TipoDeber.Comida, Hoy, new TimeOnly(13, 0));
+        RegistroDirecto(TipoDeber.Paseo, anteayer, new TimeOnly(23, 30));
+        RegistroDirecto(TipoDeber.Paseo, ayer, new TimeOnly(8, 0));
+        RegistroDirecto(TipoDeber.Paseo, ayer, new TimeOnly(21, 0));
+        IrALocal(Hoy, 14, 0);
+
+        var seccion = Seccion(await GetIndex(), Firulais);
+
+        Assert.Equal("Última comida: 25/10/2026 13:00", Texto(seccion, "ultima-comida"));
+        Assert.Equal("Último paseo: 24/10/2026 21:00", Texto(seccion, "ultimo-paseo"));
+        Assert.Equal("0 paseos", Texto(seccion, "paseos-hoy"));
+        Assert.Equal(
+            ["Comida · 13:00"],
+            seccion.QuerySelectorAll("[data-testid=registro] [data-testid=texto-registro]").Select(e => e.TextContent.Trim()));
+    }
+
+    private void RegistroDirecto(TipoDeber tipo, DateOnly fecha, TimeOnly hora)
+    {
+        var deber = factory.Base.InsertarDeber(Firulais, tipo, hora, Repeticion.SoloHoy, fecha);
+        var instancia = factory.Base.InsertarInstancia(deber.Id, fecha, hora);
+        factory.Base.InsertarRegistro(instancia.Id, fecha, hora);
     }
 
     /// <summary>Mueve el reloj a una hora local del hogar (UTC−3).</summary>

@@ -40,6 +40,24 @@
                     }
                 </ul>
             }
+            @if (seccion.RegistrosHoy.Count > 0)
+            {
+                <h3>Registrado hoy</h3>
+                <ul class="registros">
+                    @foreach (var registro in seccion.RegistrosHoy)
+                    {
+                        <li data-testid="registro" data-registro-id="@registro.Id">
+                            <span data-testid="texto-registro">@TextosEstadoDelDia.Registro(registro)</span>
+                            <form method="post" action="/?handler=EliminarRegistro" asp-antiforgery="true"
+                                  hx-post="/?handler=EliminarRegistro" hx-target="#estado-del-dia" hx-swap="outerHTML"
+                                  hx-sync="closest #estado-del-dia:replace">
+                                <input type="hidden" name="registroId" value="@registro.Id">
+                                <button type="submit" data-testid="eliminar-registro">Eliminar</button>
+                            </form>
+                        </li>
+                    }
+                </ul>
+            }
             <ul class="resumen">
                 <li data-testid="paseos-hoy">@TextosEstadoDelDia.Paseos(seccion.PaseosHoy)</li>
                 <li data-testid="ultima-comida">@TextosEstadoDelDia.UltimaComida(seccion.UltimaComida)</li>

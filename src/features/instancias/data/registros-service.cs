@@ -7,7 +7,7 @@ using PetCare.Shared.Tiempo;
 namespace PetCare.Features.Instancias.Data;
 
 /// <summary>
-/// Único punto de escritura de <see cref="RegistroCumplimiento"/>. Los errores de base que no son
+/// Único punto de escritura de <see cref="RegistroCumplimiento"/> (alta y eliminación). Los errores de base que no son
 /// reglas de negocio no se capturan: llegan al manejador global.
 /// </summary>
 public sealed class RegistrosService(PetCareDbContext db, TimeProvider time)
@@ -77,6 +77,47 @@ public sealed class RegistrosService(PetCareDbContext db, TimeProvider time)
         return Resultado<TimeOnly, CumplimientoError>.Ok(new TimeOnly(ahoraLocal.Hour, ahoraLocal.Minute));
     }
 
+    /// <summary>
+    /// Elimina un registro de hoy (FR-09, FR-10) y deja vigente su instancia, marcando cuándo se
+    /// reactivó (FR-11). Devuelve el id de la instancia. Un id que no existe —nunca existió o ya
+    /// se eliminó— es <see cref="CumplimientoError.RegistroYaEliminado"/> (FR-12).
+    /// </summary>
+    public async Task<Resultado<int, CumplimientoError>> EliminarAsync(int registroId, CancellationToken cancellationToken)
+    {
+        var ahoraUtc = time.GetUtcNow();
+        var registro = await db.RegistrosCumplimiento
+            .Where(r => r.Id == registroId)
+            .Select(r => new RegistroParaEliminar(r.Fecha, r.InstanciaId))
+            .SingleOrDefaultAsync(cancellationToken);
+        if (registro is null)
+        {
+            return Resultado<int, CumplimientoError>.Falla([CumplimientoError.RegistroYaEliminado]);
+        }
+
+        if (registro.Fecha != ZonaHogar.Hoy(ahoraUtc))
+        {
+            return Resultado<int, CumplimientoError>.Falla([CumplimientoError.RegistroDeOtroDia]);
+        }
+
+        await using var transaccion = await db.Database.BeginTransactionAsync(cancellationToken);
+        var borrados = await db.RegistrosCumplimiento
+            .Where(r => r.Id == registroId)
+            .ExecuteDeleteAsync(cancellationToken);
+        if (borrados == 0)
+        {
+            // Otro cuidador lo eliminó entre la lectura y el borrado: no se reactiva dos veces.
+            await transaccion.RollbackAsync(cancellationToken);
+            return Resultado<int, CumplimientoError>.Falla([CumplimientoError.RegistroYaEliminado]);
+        }
+
+        DateTimeOffset? reactivadaEnUtc = ahoraUtc.ToUniversalTime();
+        await db.Instancias
+            .Where(i => i.Id == registro.InstanciaId)
+            .ExecuteUpdateAsync(s => s.SetProperty(i => i.ReactivadaEnUtc, reactivadaEnUtc), cancellationToken);
+        await transaccion.CommitAsync(cancellationToken);
+        return Resultado<int, CumplimientoError>.Ok(registro.InstanciaId);
+    }
+
     private async Task<InstanciaParaCumplir?> LeerAsync(int instanciaId, CancellationToken cancellationToken) =>
         await db.Instancias
             .Where(i => i.Id == instanciaId)
@@ -84,4 +125,6 @@ public sealed class RegistrosService(PetCareDbContext db, TimeProvider time)
             .SingleOrDefaultAsync(cancellationToken);
 
     private sealed record InstanciaParaCumplir(DateOnly Fecha, bool TieneRegistro);
+
+    private sealed record RegistroParaEliminar(DateOnly Fecha, int InstanciaId);
 }

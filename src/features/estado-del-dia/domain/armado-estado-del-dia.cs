@@ -8,14 +8,15 @@ namespace PetCare.Features.EstadoDelDia.Domain;
 public sealed record InstanciaLeida(int Id, int MascotaId, TipoDeber Tipo, DateOnly Fecha, TimeOnly Hora, bool TieneRegistro);
 
 /// <summary>Registro de cumplimiento tal como lo lee el servicio, con la mascota y el tipo de su deber.</summary>
-public sealed record RegistroLeido(int MascotaId, TipoDeber Tipo, DateOnly Fecha, TimeOnly HoraReal);
+public sealed record RegistroLeido(int Id, int MascotaId, TipoDeber Tipo, DateOnly Fecha, TimeOnly HoraReal);
 
 public static class ArmadoEstadoDelDia
 {
     /// <summary>
     /// Una sección por mascota, en el orden recibido, aunque no tenga instancias (FR-12, FR-17):
     /// sus instancias vigentes por hora y tipo, marcadas si vencieron (FR-13, FR-10), los paseos
-    /// registrados hoy (FR-14) y el último registro de comida y de paseo de cualquier día (FR-15, FR-16).
+    /// registrados hoy (FR-14), el último registro de comida y de paseo de cualquier día (FR-15, FR-16)
+    /// y los registros de hoy, de cualquier tipo, por hora real (FR-08 de FEAT-001b).
     /// </summary>
     public static EstadoDelDia Armar(
         IReadOnlyList<MascotaVista> mascotas,
@@ -24,11 +25,14 @@ public static class ArmadoEstadoDelDia
         DateTime ahoraLocal)
     {
         var hoy = DateOnly.FromDateTime(ahoraLocal);
+        // El servicio une dos lecturas acotadas (los de hoy y el último por tipo), que se pisan
+        // cuando el último es de hoy: cada registro cuenta una sola vez.
+        var unicos = registros.DistinctBy(r => r.Id).ToList();
         var secciones = mascotas
             .Select(m => ArmarSeccion(
                 m,
                 instancias.Where(i => i.MascotaId == m.Id),
-                registros.Where(r => r.MascotaId == m.Id).ToList(),
+                unicos.Where(r => r.MascotaId == m.Id).ToList(),
                 hoy,
                 ahoraLocal))
             .ToList();
@@ -56,7 +60,13 @@ public static class ArmadoEstadoDelDia
             vigentes,
             paseosHoy,
             Ultimo(registros, TipoDeber.Comida),
-            Ultimo(registros, TipoDeber.Paseo));
+            Ultimo(registros, TipoDeber.Paseo),
+            registros
+                .Where(r => r.Fecha == hoy)
+                .OrderBy(r => r.HoraReal)
+                .ThenBy(r => r.Id)
+                .Select(r => new RegistroVista(r.Id, r.Tipo, r.HoraReal))
+                .ToList());
     }
 
     private static UltimoRegistro? Ultimo(IReadOnlyList<RegistroLeido> registros, TipoDeber tipo) =>

@@ -11,7 +11,7 @@ namespace PetCare.Features.EstadoDelDia.Ui;
 using PetCare.Features.EstadoDelDia.Domain;
 
 /// <summary>
-/// Pantalla principal: estado del día, registro de cumplimiento y refresco del parcial. Los
+/// Pantalla principal: estado del día, registro y eliminación de cumplimientos y refresco del parcial. Los
 /// handlers solo traducen errores tipados a mensaje o status (respuestas HTMX del spec: los
 /// rechazos de negocio son 200 con el parcial).
 /// </summary>
@@ -73,9 +73,7 @@ public class IndexModel(EstadoDelDiaService estadoDelDia, RegistrosService regis
 
         if (resultado.EsOk && !EsHtmx)
         {
-            // 303 (PRG): el navegador vuelve a pedir la página con GET.
-            Response.Headers.Location = "/";
-            return StatusCode(StatusCodes.Status303SeeOther);
+            return VolverAlInicio();
         }
 
         if (resultado.EsOk)
@@ -93,6 +91,32 @@ public class IndexModel(EstadoDelDiaService estadoDelDia, RegistrosService regis
         }
 
         return Responder();
+    }
+
+    public async Task<IActionResult> OnPostEliminarRegistroAsync(int? registroId, CancellationToken cancellationToken)
+    {
+        if (registroId is not { } id)
+        {
+            return BadRequest();
+        }
+
+        var resultado = await registros.EliminarAsync(id, cancellationToken);
+        if (resultado.EsOk && !EsHtmx)
+        {
+            return VolverAlInicio();
+        }
+
+        // Los rechazos (ya eliminado, de otro día) son 200 con el mensaje: HTMX no reemplaza con 4xx.
+        var mensaje = resultado.EsOk ? null : CumplimientoErrores.Mensaje(resultado.Errores[0]);
+        Vista = await ArmarVistaAsync(mensaje, null, cancellationToken);
+        return Responder();
+    }
+
+    /// <summary>303 (PRG): el navegador vuelve a pedir la página con GET.</summary>
+    private StatusCodeResult VolverAlInicio()
+    {
+        Response.Headers.Location = "/";
+        return StatusCode(StatusCodes.Status303SeeOther);
     }
 
     private IActionResult Responder() => EsHtmx ? Partial(NombreParcial, Vista) : Page();

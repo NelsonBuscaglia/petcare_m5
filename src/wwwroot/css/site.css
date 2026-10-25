@@ -148,3 +148,22 @@ form button {
     padding: 0.5rem 0;
     text-align: center;
 }
+
+/* Registros del día (FR-08, NFR-04): cada uno con su botón "Eliminar" a todo el ancho. */
+.registros {
+    padding-left: 0;
+    list-style: none;
+}
+
+.registros li {
+    padding: 0.25rem 0;
+}
+
+.registros form {
+    margin: 0.25rem 0 0.5rem;
+}
+
+.seccion h3 {
+    margin: 0.75rem 0 0.25rem;
+    font-size: 1rem;
+}
