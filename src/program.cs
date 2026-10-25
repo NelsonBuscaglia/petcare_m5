@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using PetCare.Features.Deberes.Data;
+using PetCare.Features.EstadoDelDia.Data;
 using PetCare.Features.Hogar.Data;
 using PetCare.Features.Instancias.Data;
 using PetCare.Shared.Data;
@@ -21,6 +22,7 @@ builder.Services.AddSingleton<GeneracionLock>();
 builder.Services.AddScoped<MascotasService>();
 builder.Services.AddScoped<DeberesService>();
 builder.Services.AddScoped<InstanciasService>();
+builder.Services.AddScoped<EstadoDelDiaService>();
 builder.Services.AddHostedService<GeneracionDiariaWorker>();
 
 var app = builder.Build();
