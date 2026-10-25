@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/petcare-web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/petcare-tests.csproj" />
+  </Folder>
+</Solution>

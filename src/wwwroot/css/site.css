@@ -1,0 +1,125 @@
+/* Mobile-first (NFR-02): nada más ancho que la pantalla, desde 360 px. */
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+}
+
+body {
+    margin: 0;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.4;
+    color: #1f2328;
+    background: #fafafa;
+}
+
+.contenedor {
+    max-width: 40rem;
+    margin: 0 auto;
+    padding: 0 1rem;
+}
+
+/* Nombres largos sin espacios (hasta 50 caracteres) se cortan en vez de ensanchar la página. */
+h1,
+h2,
+p,
+li,
+label,
+legend,
+span,
+a {
+    overflow-wrap: anywhere;
+}
+
+h1 {
+    font-size: 1.5rem;
+}
+
+h2 {
+    font-size: 1.25rem;
+}
+
+ul {
+    padding-left: 1.25rem;
+}
+
+.seccion {
+    margin: 1rem 0;
+    padding: 0.75rem 1rem;
+    background: #fff;
+    border: 1px solid #d0d7de;
+    border-radius: 0.5rem;
+}
+
+.seccion h2 {
+    margin-top: 0;
+}
+
+.instancias {
+    padding-left: 0;
+    list-style: none;
+}
+
+.instancias li {
+    padding: 0.25rem 0;
+}
+
+.marca-pendiente {
+    display: inline-block;
+    margin-left: 0.5rem;
+    padding: 0 0.5rem;
+    border-radius: 0.25rem;
+    background: #b42318;
+    color: #fff;
+    font-size: 0.875rem;
+}
+
+.resumen {
+    padding-left: 0;
+    list-style: none;
+    color: #57606a;
+}
+
+form fieldset {
+    min-width: 0;
+    margin: 0 0 1rem;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #d0d7de;
+    border-radius: 0.5rem;
+}
+
+form fieldset label {
+    display: block;
+    padding: 0.25rem 0;
+}
+
+form > label {
+    display: block;
+    margin-bottom: 1rem;
+}
+
+form input[type="time"],
+form button {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    padding: 0.5rem;
+    font: inherit;
+}
+
+form button {
+    border: 0;
+    border-radius: 0.5rem;
+    background: #0969da;
+    color: #fff;
+}
+
+[role="alert"] {
+    color: #b42318;
+}

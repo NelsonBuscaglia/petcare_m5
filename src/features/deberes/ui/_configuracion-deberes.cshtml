@@ -1,0 +1,48 @@
+@using PetCare.Features.Deberes.Domain
+@model PetCare.Features.Deberes.Ui.ConfiguracionDeberesVista
+
+<div id="configuracion-deberes" data-testid="configuracion-deberes">
+    <h2>Deberes activos</h2>
+    @if (Model.Deberes.Count == 0)
+    {
+        <p data-testid="sin-deberes">No hay deberes activos.</p>
+    }
+    else
+    {
+        <ul data-testid="deberes-activos">
+            @foreach (var deber in Model.Deberes)
+            {
+                <li data-testid="deber-activo">@DeberActivo.Texto(deber)</li>
+            }
+        </ul>
+    }
+
+    <h2>Nuevo deber</h2>
+    @if (Model.Errores.Count > 0)
+    {
+        <ul data-testid="errores" role="alert">
+            @foreach (var error in Model.Errores)
+            {
+                <li data-testid="error">@error</li>
+            }
+        </ul>
+    }
+    <form method="post" action="@Model.Ruta" asp-antiforgery="true" data-testid="form-alta"
+          hx-post="@Model.Ruta" hx-target="#configuracion-deberes" hx-swap="outerHTML">
+        <fieldset>
+            <legend>Tipo</legend>
+            <label><input type="radio" name="tipo" value="comida" checked="@(Model.Tipo == "comida")"> Comida</label>
+            <label><input type="radio" name="tipo" value="paseo" checked="@(Model.Tipo == "paseo")"> Paseo</label>
+        </fieldset>
+        <label>
+            Hora
+            <input type="time" name="hora" value="@Model.Hora">
+        </label>
+        <fieldset>
+            <legend>Repetición</legend>
+            <label><input type="radio" name="repeticion" value="solo-hoy" checked="@(Model.Repeticion == "solo-hoy")"> Solo para hoy</label>
+            <label><input type="radio" name="repeticion" value="todos-los-dias" checked="@(Model.Repeticion == "todos-los-dias")"> Todos los días</label>
+        </fieldset>
+        <button type="submit">Dar de alta</button>
+    </form>
+</div>

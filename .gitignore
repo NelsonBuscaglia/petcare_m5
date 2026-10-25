@@ -8,3 +8,16 @@
 .daw-sessions/
 .daw-journal.jsonl
 # END DAW
+
+# .NET / herramientas
+bin/
+obj/
+*.db
+*.db-shm
+*.db-wal
+*.db-journal
+TestResults/
+.vs/
+*.user
+__pycache__/
+.playwright/

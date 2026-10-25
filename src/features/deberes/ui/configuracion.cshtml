@@ -1,0 +1,9 @@
+@page "/mascotas/{mascotaId:int}/deberes"
+@model PetCare.Features.Deberes.Ui.ConfiguracionModel
+
+@if (Model.Vista is { } vista)
+{
+    <h1 data-testid="nombre-mascota">@vista.Mascota.Nombre</h1>
+    <partial name="@PetCare.Features.Deberes.Ui.ConfiguracionModel.NombreParcial" model="vista" />
+}
+<p><a href="/" data-testid="volver">Volver al estado del día</a></p>
