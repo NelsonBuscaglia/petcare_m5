@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using PetCare.Features.Deberes.Data;
+using PetCare.Features.Hogar.Data;
 using PetCare.Shared.Data;
 using PetCare.Shared.Hosting;
 
@@ -15,6 +17,8 @@ builder.Services.AddRazorPages(o => o.RootDirectory = "/features");
 builder.Services.AddDbContext<PetCareDbContext>(o => o.UseSqlite(cadenaDeConexion));
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<GeneracionLock>();
+builder.Services.AddScoped<MascotasService>();
+builder.Services.AddScoped<DeberesService>();
 
 var app = builder.Build();
 
