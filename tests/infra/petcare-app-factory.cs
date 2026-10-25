@@ -4,15 +4,18 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Time.Testing;
 using PetCare.Shared.Data;
+using PetCare.Shared.Hosting;
 
 namespace PetCare.Tests.Infra;
 
 /// <summary>
 /// Host de la app para tests HTTP: SQLite en memoria (abierta mientras viva la fábrica, migrada
 /// salvo que se pida lo contrario) y un <see cref="FakeTimeProvider"/> en lugar del reloj real.
-/// Nunca abre <c>petcare.db</c>.
+/// Sin <see cref="GeneracionDiariaWorker"/>: los tests generan instancias de forma explícita y los
+/// del worker lo instancian aparte. Nunca abre <c>petcare.db</c>.
 /// </summary>
 public class PetCareAppFactory : WebApplicationFactory<Program>
 {
@@ -47,6 +50,9 @@ public class PetCareAppFactory : WebApplicationFactory<Program>
 
             services.RemoveAll<TimeProvider>();
             services.AddSingleton<TimeProvider>(Reloj);
+
+            services.Remove(services.Single(d =>
+                d.ServiceType == typeof(IHostedService) && d.ImplementationType == typeof(GeneracionDiariaWorker)));
         });
     }
 
