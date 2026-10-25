@@ -1,12 +1,11 @@
-using System.Globalization;
-using System.Text.RegularExpressions;
 using PetCare.Shared.Resultados;
+using PetCare.Shared.Tiempo;
 
 namespace PetCare.Features.Deberes.Domain;
 
 public sealed record AltaDeberValida(TipoDeber Tipo, TimeOnly Hora, Repeticion Repeticion);
 
-public static partial class ValidacionAltaDeber
+public static class ValidacionAltaDeber
 {
     /// <summary>
     /// Valida los tres campos del alta tal como llegan del formulario y devuelve todos los errores
@@ -32,13 +31,13 @@ public static partial class ValidacionAltaDeber
         {
             errores.Add(AltaDeberError.HoraObligatoria);
         }
-        else if (!FormatoHora().IsMatch(hora))
+        else if (FormatoHora.TryParse(hora, out var horaLeida))
         {
-            errores.Add(AltaDeberError.HoraInvalida);
+            horaValida = horaLeida;
         }
         else
         {
-            horaValida = TimeOnly.ParseExact(hora, "HH:mm", CultureInfo.InvariantCulture);
+            errores.Add(AltaDeberError.HoraInvalida);
         }
 
         Repeticion? repeticionValida = repeticion switch
@@ -57,8 +56,4 @@ public static partial class ValidacionAltaDeber
             : Resultado<AltaDeberValida, AltaDeberError>.Ok(
                 new AltaDeberValida(tipoValido!.Value, horaValida!.Value, repeticionValida!.Value));
     }
-
-    // `\z` y no `$`: `$` aceptaría un salto de línea final ("18:00\n").
-    [GeneratedRegex(@"^([01][0-9]|2[0-3]):[0-5][0-9]\z", RegexOptions.CultureInvariant)]
-    private static partial Regex FormatoHora();
 }

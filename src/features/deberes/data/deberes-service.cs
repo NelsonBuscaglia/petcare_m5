@@ -35,7 +35,8 @@ public sealed class DeberesService(PetCareDbContext db, TimeProvider time, Gener
         var alta = validacion.Valor;
         using (await generacionLock.TomarAsync(cancellationToken))
         {
-            var hoy = ZonaHogar.Hoy(time.GetUtcNow());
+            var ahoraLocal = ZonaHogar.AhoraLocal(time.GetUtcNow());
+            var hoy = DateOnly.FromDateTime(ahoraLocal);
             var deber = new Deber
             {
                 MascotaId = mascotaId,
@@ -45,7 +46,12 @@ public sealed class DeberesService(PetCareDbContext db, TimeProvider time, Gener
                 FechaAlta = hoy,
             };
             db.Deberes.Add(deber);
-            var instancia = new Instancia { Fecha = hoy, Hora = alta.Hora };
+            var instancia = new Instancia
+            {
+                Fecha = hoy,
+                Hora = alta.Hora,
+                VencidaAlGenerarse = EstadoInstancia.EsVencida(hoy, alta.Hora, ahoraLocal),
+            };
             db.Instancias.Add(instancia);
 
             // Sin propiedades de navegación: la instancia apunta a la clave temporal del deber y EF

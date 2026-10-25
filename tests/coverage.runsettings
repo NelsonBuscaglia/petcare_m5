@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Microsoft Code Coverage. Como el DataCollector está declarado acá (y el csproj apunta a este
+  archivo con RunSettingsFilePath), TODO dotnet test mide cobertura, sin pasar settings ni collect.
+  El reporte cobertura queda en tests/TestResults/ (ignorado por git), o en el directorio que se
+  indique con results-directory.
+
+  No se excluye CompilerGeneratedAttribute: el compilador lo pone en las máquinas de estado de los
+  métodos async y en las clausuras de las lambdas, así que excluirlo esconde el cuerpo de casi todos
+  los servicios. En su lugar se excluyen por nombre solo los miembros que sintetiza el compilador sin
+  lógica propia (accesores de propiedades y miembros generados de los records), la salida de los
+  source generators (obj/) y las migraciones generadas por dotnet ef. Lo demás cuenta, sin ajustes
+  manuales.
+-->
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="Code Coverage">
+        <Configuration>
+          <Format>cobertura</Format>
+          <CodeCoverage>
+            <ModulePaths>
+              <Include>
+                <ModulePath>.*PetCare\.Web\.dll$</ModulePath>
+              </Include>
+            </ModulePaths>
+            <Functions>
+              <Exclude>
+                <Function>^.*\.get_[^.(]+\(\)$</Function>
+                <Function>^.*\.set_[^.(]+\([^,)]*\)$</Function>
+                <Function>^.*\.get_EqualityContract\(\)$</Function>
+                <Function>^.*\.Equals\(.*\)$</Function>
+                <Function>^.*\.GetHashCode\(\)$</Function>
+                <Function>^.*\.ToString\(\)$</Function>
+                <Function>^.*\.PrintMembers\(.*\)$</Function>
+                <Function>^.*\.&lt;Clone&gt;\$\(\)$</Function>
+                <Function>^.*\.Deconstruct\(.*\)$</Function>
+                <Function>^.*\.op_Equality\(.*\)$</Function>
+                <Function>^.*\.op_Inequality\(.*\)$</Function>
+                <!-- Constructor de copia de los records (lo usa <Clone>$): el analizador lo nombra Tipo.Tipo(Tipo). -->
+                <Function>^((?:[^.(]+\.)*)([^.(&lt;]+)(&lt;[^(]*&gt;)?\.\2\(\1\2(&lt;[^(]*&gt;)?\)$</Function>
+              </Exclude>
+            </Functions>
+            <Sources>
+              <Exclude>
+                <Source>.*[\\/]src[\\/]migrations[\\/].*</Source>
+                <Source>.*[\\/]obj[\\/].*</Source>
+              </Exclude>
+            </Sources>
+          </CodeCoverage>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>

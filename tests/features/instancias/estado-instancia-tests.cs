@@ -50,4 +50,13 @@ public class EstadoInstanciaTests
     [Fact]
     public void EsVigente_ConRegistro_False() =>
         Assert.False(EstadoInstancia.EsVigente(Hoy, tieneRegistro: true, Hoy));
+
+    [Fact]
+    public void MomentoDeVencimiento_Suma15Minutos()
+    {
+        Assert.Equal(new DateTime(2026, 10, 25, 9, 15, 0), EstadoInstancia.MomentoDeVencimiento(Hoy, Nueve));
+
+        // Cruza la medianoche: 23:50 vence a las 00:05 del día siguiente.
+        Assert.Equal(new DateTime(2026, 10, 26, 0, 5, 0), EstadoInstancia.MomentoDeVencimiento(Hoy, new TimeOnly(23, 50)));
+    }
 }

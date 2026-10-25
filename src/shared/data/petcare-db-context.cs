@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using PetCare.Features.Deberes.Domain;
+using PetCare.Features.Emails.Domain;
 using PetCare.Features.Hogar.Domain;
 using PetCare.Features.Instancias.Domain;
 
@@ -18,6 +19,8 @@ public class PetCareDbContext(DbContextOptions<PetCareDbContext> options) : DbCo
     public DbSet<Instancia> Instancias => Set<Instancia>();
 
     public DbSet<RegistroCumplimiento> RegistrosCumplimiento => Set<RegistroCumplimiento>();
+
+    public DbSet<EmailVencimiento> EmailsVencimiento => Set<EmailVencimiento>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder) =>
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(PetCareDbContext).Assembly);
