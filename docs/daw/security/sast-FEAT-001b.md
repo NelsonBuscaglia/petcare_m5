@@ -52,3 +52,21 @@ Supresiones: 0
 Total: 17 categorías limpias, 0 vulnerabilidades (0 critical, 0 high, 0 medium); 3 low/info documentados
 Report: docs/daw/security/sast-FEAT-001b.md
 ```
+
+---
+
+## Re-ejecución tras el corrective loop VERIFY→CODE (2026-10-26, commit 79186c8)
+
+| Campo | Valor |
+|-------|-------|
+| Alcance | `git diff ce58a05..79186c8`: `src/features/emails/data/smtp-envio-email.cs` (extracción de `SeguridadPara`) y 4 archivos de `tests/` |
+| Resultado | **PASSED**: 0 Critical, 0 High, 0 Medium. No hay hallazgos nuevos. |
+
+| ID | Resultado | Evidencia |
+|---|---|---|
+| F-SAST-01 | ✅ | Las únicas credenciales nuevas son constantes de test (`Usuario = "avisos"`, `Clave = "clave-de-prueba"` en `tests/features/emails/smtp-envio-email-tests.cs`) contra el servidor SMTP falso en loopback. En `src/` no hay ninguna. |
+| F-SAST-08 | ✅ | `SeguridadPara(int? puerto)` conserva la misma expresión: TLS obligatorio y sin `ServerCertificateValidationCallback` (M6). Ahora lo cubren los tests `SeguridadPara_Puerto_TlsObligatorio` y `Smtp_ConstructorPublicoEnPuertoNo465_ExigeStartTlsYNoEnviaEnClaro`. |
+| F-SAST-13 / F-SAST-16 | ✅ | `dotnet list package --vulnerable --include-transitive` no encuentra paquetes vulnerables. |
+| Resto (F-SAST-02..07, 09..12, 14, 15, 17) | ✅ | El diff en `src/` es una extracción sin entradas nuevas, sin E/S nueva y sin logs nuevos. |
+
+Pendiente que no es de seguridad, para un ticket aparte (decisión del usuario): `SmtpEnvioEmail.Clasificar` no traduce a error tipado `NotSupportedException` (servidor sin STARTTLS) ni `ServiceNotAuthenticatedException`. Igual nunca se envía en claro.
