@@ -241,6 +241,47 @@ public sealed class EmailsVencimientoServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task Procesar_PrimerEnvioLentoDejaFueraDeVentanaALaSegunda_NoLaIntenta()
+    {
+        // Firulais vence a las 09:15 (ventana hasta 09:20); Michi a las 09:11 (ventana hasta 09:16).
+        // Las dos son candidatas a las 09:15:30, pero el intento de Firulais (menor id, va primero)
+        // se cuelga 30 s: a las 09:16:00 la ventana de Michi ya cerró.
+        var lenta = InsertarDeHoy(Firulais, TipoDeber.Comida, Nueve);
+        InsertarDeHoy(Michi, TipoDeber.Comida, new TimeOnly(8, 56));
+        envio.NoResponderHasta(Local(9, 15, 31));
+        IrA(9, 15, 30);
+
+        var pasada = Procesar();
+        Assert.True(await EsperarAsync(() => envio.Intentos.Count == 1), "El primer intento no empezó.");
+        reloj.Advance(EmailsVencimientoService.TimeoutPorIntento);
+        Assert.True(await EsperarAsync(() => pasada.IsCompleted), "El primer intento no falló a los 30 s.");
+        var resumen = await pasada;
+
+        var intento = Assert.Single(envio.Intentos);
+        Assert.Contains("Firulais", intento.Mensaje.Asunto);
+        Assert.Equal(new EnvioFallido(lenta.Id, EnvioEmailError.SinRespuesta), Assert.Single(resumen.Fallidos));
+        Assert.Empty(resumen.Aceptados);
+        Assert.Empty(await Emails());
+    }
+
+    [Fact]
+    public async Task Procesar_CancelacionDelLlamadorDuranteIntento_Propaga()
+    {
+        InsertarDeHoy(Firulais, TipoDeber.Comida, Nueve);
+        envio.NoResponderHasta(Local(9, 17));
+        IrA(9, 15);
+        using var apagado = new CancellationTokenSource();
+
+        var pasada = ProcesarConToken(apagado.Token);
+        Assert.True(await EsperarAsync(() => envio.Intentos.Count == 1), "El intento no empezó.");
+        await apagado.CancelAsync();
+
+        // Se apaga el host, no venció el plazo del intento: no es SinRespuesta, se propaga.
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => pasada);
+        Assert.Empty(await Emails());
+    }
+
+    [Fact]
     public async Task Procesar_ChoqueAlGuardarEmail_ErrorTipadoSinReintento()
     {
         var instancia = InsertarDeHoy(Firulais, TipoDeber.Comida, Nueve);
@@ -288,6 +329,12 @@ public sealed class EmailsVencimientoServiceTests : IDisposable
                 .AddInterceptors(interceptores)
                 .Options);
         return await new EmailsVencimientoService(contexto, envio, reloj).ProcesarAsync(CancellationToken.None);
+    }
+
+    private async Task<ResumenEnvios> ProcesarConToken(CancellationToken cancellationToken)
+    {
+        await using var contexto = baseDeTest.CrearContexto();
+        return await new EmailsVencimientoService(contexto, envio, reloj).ProcesarAsync(cancellationToken);
     }
 
     /// <summary>Una pasada por minuto, de <paramref name="desde"/> a <paramref name="hasta"/> inclusive.</summary>

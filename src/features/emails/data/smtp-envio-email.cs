@@ -25,12 +25,13 @@ public sealed class SmtpEnvioEmail : IEnvioEmail
     private readonly int timeoutMs;
 
     public SmtpEnvioEmail(OpcionesSmtp opciones)
-        : this(
-            opciones,
-            opciones?.Puerto == PuertoSmtps ? SecureSocketOptions.SslOnConnect : SecureSocketOptions.StartTls,
-            TimeoutMs)
+        : this(opciones, SeguridadPara(opciones?.Puerto), TimeoutMs)
     {
     }
+
+    /// <summary>TLS obligatorio (M6): <c>SslOnConnect</c> en el puerto 465, <c>StartTls</c> en los demás.</summary>
+    internal static SecureSocketOptions SeguridadPara(int? puerto) =>
+        puerto == PuertoSmtps ? SecureSocketOptions.SslOnConnect : SecureSocketOptions.StartTls;
 
     /// <summary>Solo para tests: permite <c>SecureSocketOptions.None</c> contra un servidor local y un timeout corto.</summary>
     internal SmtpEnvioEmail(OpcionesSmtp opciones, SecureSocketOptions seguridad, int timeoutMs)

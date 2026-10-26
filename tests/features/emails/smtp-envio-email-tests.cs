@@ -11,6 +11,8 @@ namespace PetCare.Tests.Features.Emails;
 public class SmtpEnvioEmailTests
 {
     private const string Remitente = "avisos@ejemplo.com";
+    private const string Usuario = "avisos";
+    private const string Clave = "clave-de-prueba";
     private const int TimeoutCorto = 500;
 
     /// <summary>Holgado para los casos que sí responden: con la suite en paralelo, 500 ms no alcanzan.</summary>
@@ -87,6 +89,67 @@ public class SmtpEnvioEmailTests
     }
 
     [Fact]
+    public async Task Smtp_ConCredenciales_AutenticaAntesDeEnviar()
+    {
+        await using var servidor = new ServidorSmtpFalso(ModoServidorSmtp.Acepta, (Usuario, Clave));
+
+        var resultado = await CrearEnvio(servidor, Usuario, Clave).EnviarAsync(Mensaje, CancellationToken.None);
+
+        Assert.True(resultado.EsOk, $"Errores: {string.Join(", ", resultado.Errores)}");
+        Assert.Equal([new IntentoDeAutenticacion(Usuario, Clave, Aceptado: true)], servidor.Autenticaciones);
+        Assert.Single(servidor.Mensajes);
+    }
+
+    [Fact]
+    public async Task Smtp_CredencialesIncorrectas_RechazadoSinEnviar()
+    {
+        await using var servidor = new ServidorSmtpFalso(ModoServidorSmtp.Acepta, (Usuario, Clave));
+
+        var resultado = await CrearEnvio(servidor, Usuario, "otra-clave").EnviarAsync(Mensaje, CancellationToken.None);
+
+        Assert.False(resultado.EsOk);
+        Assert.Equal([EnvioEmailError.Rechazado], resultado.Errores);
+        // MailKit prueba cada mecanismo anunciado (PLAIN y LOGIN) antes de rendirse.
+        Assert.NotEmpty(servidor.Autenticaciones);
+        Assert.All(servidor.Autenticaciones, a => Assert.Equal(new IntentoDeAutenticacion(Usuario, "otra-clave", Aceptado: false), a));
+        Assert.Empty(servidor.Destinatarios);
+        Assert.Empty(servidor.Mensajes);
+    }
+
+    [Fact]
+    public void Constructor_UsuarioSinClave_Lanza()
+    {
+        Assert.ThrowsAny<ArgumentException>(() => new SmtpEnvioEmail(ConUsuario(clave: null)));
+        Assert.ThrowsAny<ArgumentException>(() => new SmtpEnvioEmail(ConUsuario(clave: "")));
+
+        static OpcionesSmtp ConUsuario(string? clave) =>
+            new() { Host = "smtp.ejemplo.com", Puerto = 587, Remitente = Remitente, Usuario = Usuario, Clave = clave };
+    }
+
+    [Theory]
+    [InlineData(465, SecureSocketOptions.SslOnConnect)]
+    [InlineData(587, SecureSocketOptions.StartTls)]
+    [InlineData(25, SecureSocketOptions.StartTls)]
+    [InlineData(2525, SecureSocketOptions.StartTls)]
+    public void SeguridadPara_Puerto_TlsObligatorio(int puerto, SecureSocketOptions esperada)
+    {
+        Assert.Equal(esperada, SmtpEnvioEmail.SeguridadPara(puerto));
+    }
+
+    [Fact]
+    public async Task Smtp_ConstructorPublicoEnPuertoNo465_ExigeStartTlsYNoEnviaEnClaro()
+    {
+        // El servidor falso no anuncia STARTTLS: con StartTls obligatorio, MailKit no sigue en claro.
+        await using var servidor = new ServidorSmtpFalso(ModoServidorSmtp.Acepta);
+        var envio = new SmtpEnvioEmail(new OpcionesSmtp { Host = servidor.Host, Puerto = servidor.Puerto, Remitente = Remitente });
+
+        await Assert.ThrowsAnyAsync<NotSupportedException>(() => envio.EnviarAsync(Mensaje, CancellationToken.None));
+
+        Assert.Empty(servidor.Destinatarios);
+        Assert.Empty(servidor.Mensajes);
+    }
+
+    [Fact]
     public void Clasificar_ExcepcionesMailKit()
     {
         Assert.Equal(EnvioEmailError.Rechazado, SmtpEnvioEmail.Clasificar(
@@ -106,4 +169,9 @@ public class SmtpEnvioEmailTests
         new OpcionesSmtp { Host = servidor.Host, Puerto = servidor.Puerto, Remitente = Remitente },
         SecureSocketOptions.None,
         timeoutMs);
+
+    private static SmtpEnvioEmail CrearEnvio(ServidorSmtpFalso servidor, string usuario, string clave) => new(
+        new OpcionesSmtp { Host = servidor.Host, Puerto = servidor.Puerto, Remitente = Remitente, Usuario = usuario, Clave = clave },
+        SecureSocketOptions.None,
+        TimeoutHolgado);
 }

@@ -229,6 +229,42 @@ public sealed class CumplimientoPageTests : IDisposable
         Assert.Equal(0, await CantidadDeRegistros());
     }
 
+    [Theory]
+    [InlineData("")]
+    [InlineData(null)]
+    public async Task Cumplir_HoraVaciaOAusente_HoraObligatoriaYFormularioAbierto(string? horaReal)
+    {
+        await Alta(Firulais, "comida", "12:00", "solo-hoy");
+        var instanciaId = await IdDeInstancia();
+        IrALocal(Hoy, 10, 30);
+        using var cliente = CrearCliente(factory);
+        var token = await TokenDelFormulario(cliente, instanciaId);
+
+        using var respuesta = await Cumplir(cliente, token, instanciaId, horaReal, htmx: true);
+        var cuerpo = await respuesta.Content.ReadAsStringAsync();
+        var documento = new HtmlParser().ParseDocument(cuerpo);
+
+        Assert.Equal(HttpStatusCode.OK, respuesta.StatusCode);
+        Assert.DoesNotContain("<html", cuerpo, StringComparison.OrdinalIgnoreCase);
+        var seccion = Seccion(documento, Firulais);
+        var instancia = Assert.Single(seccion.QuerySelectorAll($"[data-testid=instancia][data-instancia-id='{instanciaId}']"));
+        var formulario = Assert.Single(instancia.QuerySelectorAll("form[data-formulario-cumplimiento]"));
+        Assert.Equal("La hora es obligatoria.", Texto(formulario, "error-cumplimiento"));
+        Assert.Equal("", formulario.QuerySelector("[data-testid=hora-real]")?.GetAttribute("value") ?? "");
+        Assert.Single(formulario.QuerySelectorAll($"input[type=hidden][name={CampoToken}]"));
+        Assert.Equal(0, await CantidadDeRegistros());
+
+        // Sin HTMX: 200 con la página completa y el formulario abierto con el error.
+        using var sinHtmx = await Cumplir(cliente, token, instanciaId, horaReal);
+        var cuerpoSinHtmx = await sinHtmx.Content.ReadAsStringAsync();
+        var pagina = new HtmlParser().ParseDocument(cuerpoSinHtmx);
+        Assert.Equal(HttpStatusCode.OK, sinHtmx.StatusCode);
+        Assert.Contains("<html", cuerpoSinHtmx, StringComparison.OrdinalIgnoreCase);
+        var formularioEnPagina = Assert.Single(pagina.QuerySelectorAll("#estado-del-dia form[data-formulario-cumplimiento]"));
+        Assert.Equal("La hora es obligatoria.", Texto(formularioEnPagina, "error-cumplimiento"));
+        Assert.Equal(0, await CantidadDeRegistros());
+    }
+
     [Fact]
     public async Task Cumplir_DosVeces_SegundoMuestraYaCumplida()
     {
