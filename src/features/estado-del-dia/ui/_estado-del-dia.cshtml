@@ -1,7 +1,13 @@
 @using PetCare.Features.EstadoDelDia.Domain
 @model PetCare.Features.EstadoDelDia.Domain.EstadoDelDiaVista
 
-<div id="estado-del-dia" data-testid="estado-del-dia">
+@{
+    // Pausado con un formulario de cumplimiento abierto, para no pisar lo que se está editando (FR-01).
+    // El filtro se evalúa con htmx.config.allowEval: si se agrega una CSP, hay que revisarlo.
+    var refresco = $"every {Model.RefrescoSegundos.ToString(System.Globalization.CultureInfo.InvariantCulture)}s [!document.querySelector('[data-formulario-cumplimiento]')]";
+}
+<div id="estado-del-dia" data-testid="estado-del-dia"
+     hx-get="/?handler=Estado" hx-trigger="@refresco" hx-swap="outerHTML" hx-sync="this:replace">
     @if (Model.Mensaje is not null)
     {
         <p class="mensaje" data-testid="mensaje" role="alert">@Model.Mensaje</p>

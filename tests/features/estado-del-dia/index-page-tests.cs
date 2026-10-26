@@ -217,6 +217,50 @@ public sealed class IndexPageTests : IDisposable
     }
 
     [Fact]
+    public async Task Estado_FallaDeBase_500Generico()
+    {
+        using var conFalla = factory.WithWebHostBuilder(b =>
+        {
+            b.UseEnvironment("Production");
+            b.ConfigureServices(s => s.ConfigureDbContext<PetCareDbContext>(
+                o => o.AddInterceptors(new FallaAlLeer())));
+        });
+        using var cliente = conFalla.CreateClient();
+        using var pedido = new HttpRequestMessage(HttpMethod.Get, "/?handler=Estado");
+        pedido.Headers.Add("HX-Request", "true");
+
+        using var respuesta = await cliente.SendAsync(pedido);
+        var cuerpo = await respuesta.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.InternalServerError, respuesta.StatusCode);
+        Assert.Contains("Ocurrió un error inesperado.", new HtmlParser().ParseDocument(cuerpo).Body?.TextContent ?? "");
+        Assert.DoesNotContain(FallaAlLeer.Detalle, cuerpo);
+        Assert.DoesNotContain("InvalidOperationException", cuerpo);
+        Assert.DoesNotContain("Firulais", cuerpo);
+    }
+
+    [Fact]
+    public async Task Index_ContenedorConPollingPausableYSync()
+    {
+        const string Trigger = "every 1s [!document.querySelector('[data-formulario-cumplimiento]')]";
+        var pagina = await GetIndex();
+        using var cliente = factory.CreateClient();
+        using var respuesta = await cliente.GetAsync("/?handler=Estado");
+        Assert.Equal(HttpStatusCode.OK, respuesta.StatusCode);
+        var parcial = new HtmlParser().ParseDocument(await respuesta.Content.ReadAsStringAsync());
+
+        // El contenedor que se reemplaza en cada refresco trae el mismo polling: si no, se cortaría al primero.
+        foreach (var documento in new[] { pagina, parcial })
+        {
+            var contenedor = Assert.Single(documento.QuerySelectorAll("#estado-del-dia"));
+            Assert.Equal("/?handler=Estado", contenedor.GetAttribute("hx-get"));
+            Assert.Equal(Trigger, contenedor.GetAttribute("hx-trigger"));
+            Assert.Equal("outerHTML", contenedor.GetAttribute("hx-swap"));
+            Assert.Equal("this:replace", contenedor.GetAttribute("hx-sync"));
+        }
+    }
+
+    [Fact]
     public async Task Index_NombreConHtml_SeMuestraCodificado()
     {
         int id;

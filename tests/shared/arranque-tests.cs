@@ -100,6 +100,21 @@ public class ArranqueTests
         Assert.DoesNotContain("clave-secreta-de-prueba", error.Message);
     }
 
+    [Theory]
+    [InlineData("0")]
+    [InlineData("16")]
+    public void Arranque_RefrescoInvalido_Falla(string segundos)
+    {
+        using var fabricaBase = new PetCareAppFactory(migrar: false);
+        using var factory = fabricaBase.WithWebHostBuilder(b => b.UseSetting("EstadoDelDia:RefrescoSegundos", segundos));
+
+        var error = Assert.Throws<InvalidOperationException>(() => factory.CreateClient());
+
+        Assert.Equal(
+            "Configuración del estado del día inválida: EstadoDelDia:RefrescoSegundos debe estar entre 1 y 15.",
+            error.Message);
+    }
+
     [Fact]
     public void Arranque_AppSettingsSinCredencialesSmtp()
     {

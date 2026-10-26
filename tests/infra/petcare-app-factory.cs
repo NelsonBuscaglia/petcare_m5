@@ -18,7 +18,8 @@ namespace PetCare.Tests.Infra;
 /// Sin <see cref="GeneracionDiariaWorker"/> ni <see cref="VencimientosWorker"/>: los tests generan
 /// instancias y procesan vencimientos de forma explícita, y los de los workers los instancian aparte.
 /// El envío de emails es un <see cref="EnvioEmailFalso"/> (nada se escribe en la consola ni sale por
-/// SMTP). Nunca abre <c>petcare.db</c>.
+/// SMTP). El estado del día se refresca cada 1 s (en vez de 10) para que los tests de navegador no
+/// esperen de más. Nunca abre <c>petcare.db</c>.
 /// </summary>
 public class PetCareAppFactory : WebApplicationFactory<Program>
 {
@@ -54,6 +55,7 @@ public class PetCareAppFactory : WebApplicationFactory<Program>
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        builder.UseSetting("EstadoDelDia:RefrescoSegundos", "1");
         builder.ConfigureServices(services =>
         {
             services.RemoveAll<DbContextOptions<PetCareDbContext>>();

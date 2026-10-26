@@ -1,6 +1,7 @@
 using System.Globalization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.Extensions.Options;
 using PetCare.Features.EstadoDelDia.Data;
 using PetCare.Features.Instancias.Data;
 using PetCare.Features.Instancias.Domain;
@@ -15,14 +16,16 @@ using PetCare.Features.EstadoDelDia.Domain;
 /// handlers solo traducen errores tipados a mensaje o status (respuestas HTMX del spec: los
 /// rechazos de negocio son 200 con el parcial).
 /// </summary>
-public class IndexModel(EstadoDelDiaService estadoDelDia, RegistrosService registros) : PageModel
+public class IndexModel(
+    EstadoDelDiaService estadoDelDia,
+    RegistrosService registros,
+    IOptions<OpcionesRefresco> opcionesRefresco) : PageModel
 {
     public const string NombreParcial = "_estado-del-dia";
 
-    // Fijo hasta que el refresco automático sea configurable (OpcionesRefresco).
-    private const int RefrescoSegundos = 10;
+    private readonly int refrescoSegundos = opcionesRefresco.Value.RefrescoSegundos;
 
-    public EstadoDelDiaVista Vista { get; private set; } = new(new EstadoDelDia([]), null, null, RefrescoSegundos);
+    public EstadoDelDiaVista Vista { get; private set; } = new(new EstadoDelDia([]), null, null, opcionesRefresco.Value.RefrescoSegundos);
 
     private bool EsHtmx => Request.Headers["HX-Request"] == "true";
 
@@ -123,5 +126,5 @@ public class IndexModel(EstadoDelDiaService estadoDelDia, RegistrosService regis
 
     private async Task<EstadoDelDiaVista> ArmarVistaAsync(
         string? mensaje, FormularioCumplimientoVista? formulario, CancellationToken cancellationToken) =>
-        new(await estadoDelDia.ObtenerAsync(cancellationToken), mensaje, formulario, RefrescoSegundos);
+        new(await estadoDelDia.ObtenerAsync(cancellationToken), mensaje, formulario, refrescoSegundos);
 }
