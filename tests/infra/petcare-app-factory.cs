@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Time.Testing;
+using PetCare.Features.Emails.Domain;
 using PetCare.Shared.Data;
 using PetCare.Shared.Hosting;
 
@@ -14,8 +15,10 @@ namespace PetCare.Tests.Infra;
 /// <summary>
 /// Host de la app para tests HTTP: SQLite en memoria (abierta mientras viva la fábrica, migrada
 /// salvo que se pida lo contrario) y un <see cref="FakeTimeProvider"/> en lugar del reloj real.
-/// Sin <see cref="GeneracionDiariaWorker"/>: los tests generan instancias de forma explícita y los
-/// del worker lo instancian aparte. Nunca abre <c>petcare.db</c>.
+/// Sin <see cref="GeneracionDiariaWorker"/> ni <see cref="VencimientosWorker"/>: los tests generan
+/// instancias y procesan vencimientos de forma explícita, y los de los workers los instancian aparte.
+/// El envío de emails es un <see cref="EnvioEmailFalso"/> (nada se escribe en la consola ni sale por
+/// SMTP). Nunca abre <c>petcare.db</c>.
 /// </summary>
 public class PetCareAppFactory : WebApplicationFactory<Program>
 {
@@ -30,11 +33,20 @@ public class PetCareAppFactory : WebApplicationFactory<Program>
     }
 
     public PetCareAppFactory(bool migrar)
+        : this(migrar, new FakeTimeProvider(InstanteInicial))
     {
-        baseDeTest = BaseDeTest.Crear(migrar);
     }
 
-    public FakeTimeProvider Reloj { get; } = new(InstanteInicial);
+    private PetCareAppFactory(bool migrar, FakeTimeProvider reloj)
+    {
+        baseDeTest = BaseDeTest.Crear(migrar);
+        Reloj = reloj;
+        EnvioEmail = new EnvioEmailFalso(reloj);
+    }
+
+    public FakeTimeProvider Reloj { get; }
+
+    public EnvioEmailFalso EnvioEmail { get; }
 
     public BaseDeTest Base => baseDeTest;
 
@@ -53,6 +65,11 @@ public class PetCareAppFactory : WebApplicationFactory<Program>
 
             services.Remove(services.Single(d =>
                 d.ServiceType == typeof(IHostedService) && d.ImplementationType == typeof(GeneracionDiariaWorker)));
+            services.Remove(services.Single(d =>
+                d.ServiceType == typeof(IHostedService) && d.ImplementationType == typeof(VencimientosWorker)));
+
+            services.RemoveAll<IEnvioEmail>();
+            services.AddSingleton<IEnvioEmail>(EnvioEmail);
         });
     }
 

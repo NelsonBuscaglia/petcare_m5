@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using PetCare.Features.Deberes.Data;
+using PetCare.Features.Emails.Data;
+using PetCare.Features.Emails.Domain;
 using PetCare.Features.EstadoDelDia.Data;
 using PetCare.Features.Hogar.Data;
 using PetCare.Features.Instancias.Data;
@@ -14,6 +16,14 @@ if (string.IsNullOrWhiteSpace(cadenaDeConexion))
     throw new InvalidOperationException("Falta ConnectionStrings:PetCare en la configuración.");
 }
 
+// Email:Smtp:* llega solo por variables de entorno (Email__Smtp__Host, …): nunca en appsettings.
+var opcionesEmail = builder.Configuration.GetSection("Email").Get<OpcionesEmail>() ?? new OpcionesEmail();
+var erroresEmail = ValidacionOpcionesEmail.Validar(opcionesEmail, builder.Environment.IsDevelopment());
+if (erroresEmail.Count > 0)
+{
+    throw new InvalidOperationException($"Configuración de email inválida: {string.Join(" ", erroresEmail)}");
+}
+
 builder.Services.AddRazorPages(o => o.RootDirectory = "/features");
 // La base se crea y actualiza solo con `dotnet ef database update`: nunca al arrancar.
 builder.Services.AddDbContext<PetCareDbContext>(o => o.UseSqlite(cadenaDeConexion));
@@ -25,6 +35,11 @@ builder.Services.AddScoped<InstanciasService>();
 builder.Services.AddScoped<RegistrosService>();
 builder.Services.AddScoped<EstadoDelDiaService>();
 builder.Services.AddHostedService<GeneracionDiariaWorker>();
+builder.Services.AddSingleton<IEnvioEmail>(opcionesEmail.Modo == OpcionesEmail.ModoSmtp
+    ? new SmtpEnvioEmail(opcionesEmail.Smtp)
+    : new ConsolaEnvioEmail());
+builder.Services.AddScoped<EmailsVencimientoService>();
+builder.Services.AddHostedService<VencimientosWorker>();
 
 var app = builder.Build();
 
