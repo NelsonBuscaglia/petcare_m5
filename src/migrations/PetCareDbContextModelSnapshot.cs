@@ -50,6 +50,26 @@ namespace PetCare.migrations
                         });
                 });
 
+            modelBuilder.Entity("PetCare.Features.Emails.Domain.EmailVencimiento", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTimeOffset>("AceptadoEnUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("InstanciaId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InstanciaId")
+                        .IsUnique();
+
+                    b.ToTable("EmailsVencimiento", (string)null);
+                });
+
             modelBuilder.Entity("PetCare.Features.Hogar.Domain.Cuidador", b =>
                 {
                     b.Property<int>("Id")
@@ -164,6 +184,12 @@ namespace PetCare.migrations
                     b.Property<TimeOnly>("Hora")
                         .HasColumnType("TEXT");
 
+                    b.Property<DateTimeOffset?>("ReactivadaEnUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("VencidaAlGenerarse")
+                        .HasColumnType("INTEGER");
+
                     b.HasKey("Id");
 
                     b.HasIndex("Fecha");
@@ -204,6 +230,15 @@ namespace PetCare.migrations
                     b.HasOne("PetCare.Features.Hogar.Domain.Mascota", null)
                         .WithMany()
                         .HasForeignKey("MascotaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("PetCare.Features.Emails.Domain.EmailVencimiento", b =>
+                {
+                    b.HasOne("PetCare.Features.Instancias.Domain.Instancia", null)
+                        .WithMany()
+                        .HasForeignKey("InstanciaId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

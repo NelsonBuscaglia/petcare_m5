@@ -2,12 +2,14 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Playwright;
 using PetCare.Features.Deberes.Data;
 using PetCare.Features.Hogar.Domain;
+using PetCare.Features.Instancias.Data;
 using PetCare.Tests.Infra;
 
 namespace PetCare.Tests.Features.EstadoDelDia;
 
 /// <summary>
-/// AC-23 / NFR-02: las tres pantallas, a 360 px, sin scroll horizontal. Cada test usa una mascota
+/// AC-23 / NFR-02 de FEAT-001a y AC-30 / NFR-04 de FEAT-001b: las pantallas, el formulario de
+/// cumplimiento y la lista de registros, a 360 px, sin scroll horizontal. Cada test usa una mascota
 /// propia con un nombre de 50 caracteres sin espacios (el máximo del esquema): es el texto que más
 /// empuja el ancho.
 /// </summary>
@@ -81,14 +83,59 @@ public sealed class SinScrollHorizontalTests(PlaywrightFixture fixture) : IClass
         await AssertSinScrollHorizontal(pagina);
     }
 
-    private Task<IBrowserContext> AbrirContexto() =>
-        fixture.Navegador.NewContextAsync(new BrowserNewContextOptions
-        {
-            BaseURL = fixture.UrlBase.ToString(),
-            ViewportSize = new ViewportSize { Width = Ancho, Height = Alto },
-            IsMobile = true,
-            HasTouch = true,
-        });
+    [Fact]
+    public async Task SinScrollHorizontal_360px_RegistrarCumplimientoEditandoHora()
+    {
+        // El reloj de esta fixture no se mueve: son las 09:00 del 25/10 y la comida de las 08:00 está vigente.
+        var mascotaId = await CrearMascotaDeNombreLargo("registrar");
+        await Alta(mascotaId, "comida", "08:00", "solo-hoy");
+        await using var contexto = await AbrirContexto();
+        var pagina = await contexto.NewPageAsync();
+        await pagina.GotoAsync("/");
+        var seccion = pagina.Locator($"section[data-testid=seccion-{mascotaId}]");
+        await AssertSinScrollHorizontal(pagina);
+
+        await seccion.Locator("[data-testid=cumplido]").ClickAsync();
+        await seccion.Locator("form[data-formulario-cumplimiento]").WaitForAsync();
+        await AssertSinScrollHorizontal(pagina);
+
+        await seccion.Locator("[data-testid=hora-real]").FillAsync("23:59");
+        await seccion.Locator("[data-testid=confirmar]").ClickAsync();
+        await seccion.Locator("[data-testid=error-cumplimiento]").WaitForAsync();
+        await AssertSinScrollHorizontal(pagina);
+
+        await seccion.Locator("[data-testid=hora-real]").FillAsync("08:30");
+        await seccion.Locator("[data-testid=confirmar]").ClickAsync();
+        await seccion.Locator("[data-testid=registro]").WaitForAsync();
+
+        Assert.Equal(0, await seccion.Locator("[data-testid=instancia]").CountAsync());
+        Assert.Equal("Comida · 08:30", (await seccion.Locator("[data-testid=texto-registro]").TextContentAsync())?.Trim());
+        await AssertSinScrollHorizontal(pagina);
+    }
+
+    [Fact]
+    public async Task SinScrollHorizontal_360px_EliminarRegistro()
+    {
+        var mascotaId = await CrearMascotaDeNombreLargo("eliminar");
+        await Alta(mascotaId, "paseo", "08:00", "solo-hoy");
+        await Alta(mascotaId, "comida", "08:15", "solo-hoy");
+        await Registrar(mascotaId, "08:30");
+        await using var contexto = await AbrirContexto();
+        var pagina = await contexto.NewPageAsync();
+        await pagina.GotoAsync("/");
+        var seccion = pagina.Locator($"section[data-testid=seccion-{mascotaId}]");
+
+        Assert.Equal(2, await seccion.Locator("[data-testid=registro]").CountAsync());
+        await AssertSinScrollHorizontal(pagina);
+
+        await seccion.Locator("[data-testid=eliminar-registro]").First.ClickAsync();
+        await seccion.Locator("[data-testid=instancia]").WaitForAsync();
+
+        Assert.Equal(1, await seccion.Locator("[data-testid=registro]").CountAsync());
+        await AssertSinScrollHorizontal(pagina);
+    }
+
+    private Task<IBrowserContext> AbrirContexto() => fixture.AbrirContextoAsync(Ancho, Alto);
 
     private static async Task AssertSinScrollHorizontal(IPage pagina)
     {
@@ -110,6 +157,27 @@ public sealed class SinScrollHorizontalTests(PlaywrightFixture fixture) : IClass
         contexto.Mascotas.Add(mascota);
         await contexto.SaveChangesAsync();
         return mascota.Id;
+    }
+
+    /// <summary>Registra el cumplimiento de todas las instancias de hoy de la mascota a la hora dada.</summary>
+    private async Task Registrar(int mascotaId, string hora)
+    {
+        List<int> instancias;
+        await using (var contexto = fixture.App.CrearContexto())
+        {
+            instancias = contexto.Instancias
+                .Where(i => contexto.Deberes.Any(d => d.Id == i.DeberId && d.MascotaId == mascotaId))
+                .Select(i => i.Id)
+                .ToList();
+        }
+
+        using var scope = fixture.App.Services.CreateScope();
+        var registros = scope.ServiceProvider.GetRequiredService<RegistrosService>();
+        foreach (var instanciaId in instancias)
+        {
+            var resultado = await registros.RegistrarAsync(instanciaId, hora, CancellationToken.None);
+            Assert.True(resultado.EsOk, $"El registro de la instancia {instanciaId} fue rechazado.");
+        }
     }
 
     private async Task Alta(int mascotaId, string tipo, string hora, string repeticion)

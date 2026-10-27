@@ -27,4 +27,25 @@ public class ZonaHogarTests
 
         Assert.Equal(new DateTime(2026, 10, 25, 5, 15, 0), ZonaHogar.AhoraLocal(instante));
     }
+
+    [Fact]
+    public void AUtc_ConvierteConDesfaseFijo()
+    {
+        var local = new DateTime(2026, 10, 25, 9, 15, 0, DateTimeKind.Unspecified);
+
+        var utc = ZonaHogar.AUtc(local);
+
+        Assert.Equal(new DateTimeOffset(2026, 10, 25, 12, 15, 0, TimeSpan.Zero), utc);
+        Assert.Equal(TimeSpan.Zero, utc.Offset);
+    }
+
+    [Fact]
+    public void AUtc_KindUtc_Lanza()
+    {
+        var utc = new DateTime(2026, 10, 25, 9, 15, 0, DateTimeKind.Utc);
+        var local = new DateTime(2026, 10, 25, 9, 15, 0, DateTimeKind.Local);
+
+        Assert.Throws<ArgumentException>(() => ZonaHogar.AUtc(utc));
+        Assert.Throws<ArgumentException>(() => ZonaHogar.AUtc(local));
+    }
 }

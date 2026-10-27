@@ -40,12 +40,12 @@ public class ArmadoEstadoDelDiaTests
     {
         IReadOnlyList<RegistroLeido> registros =
         [
-            new(Firulais.Id, TipoDeber.Paseo, Hoy, new TimeOnly(11, 0)),
-            new(Firulais.Id, TipoDeber.Comida, Ayer, new TimeOnly(20, 0)),
-            new(Firulais.Id, TipoDeber.Paseo, Hoy, new TimeOnly(9, 0)),
-            new(Firulais.Id, TipoDeber.Comida, Hoy, new TimeOnly(13, 0)),
-            new(Firulais.Id, TipoDeber.Paseo, Ayer, new TimeOnly(21, 0)),
-            new(Michi.Id, TipoDeber.Paseo, Hoy, new TimeOnly(15, 0)),
+            new(1, Firulais.Id, TipoDeber.Paseo, Hoy, new TimeOnly(11, 0)),
+            new(2, Firulais.Id, TipoDeber.Comida, Ayer, new TimeOnly(20, 0)),
+            new(3, Firulais.Id, TipoDeber.Paseo, Hoy, new TimeOnly(9, 0)),
+            new(4, Firulais.Id, TipoDeber.Comida, Hoy, new TimeOnly(13, 0)),
+            new(5, Firulais.Id, TipoDeber.Paseo, Ayer, new TimeOnly(21, 0)),
+            new(6, Michi.Id, TipoDeber.Paseo, Hoy, new TimeOnly(15, 0)),
         ];
 
         var estado = ArmadoEstadoDelDia.Armar(Mascotas, [], registros, A(Hoy, 16, 0));
@@ -63,9 +63,9 @@ public class ArmadoEstadoDelDiaTests
     {
         IReadOnlyList<RegistroLeido> registros =
         [
-            new(Firulais.Id, TipoDeber.Comida, Ayer, new TimeOnly(20, 0)),
-            new(Firulais.Id, TipoDeber.Paseo, Ayer, new TimeOnly(21, 0)),
-            new(Firulais.Id, TipoDeber.Paseo, Ayer, new TimeOnly(7, 30)),
+            new(1, Firulais.Id, TipoDeber.Comida, Ayer, new TimeOnly(20, 0)),
+            new(2, Firulais.Id, TipoDeber.Paseo, Ayer, new TimeOnly(21, 0)),
+            new(3, Firulais.Id, TipoDeber.Paseo, Ayer, new TimeOnly(7, 30)),
         ];
 
         var estado = ArmadoEstadoDelDia.Armar(Mascotas, [], registros, A(Hoy, 7, 0));
@@ -133,7 +133,7 @@ public class ArmadoEstadoDelDiaTests
         [
             new(10, Firulais.Id, TipoDeber.Comida, Hoy, new TimeOnly(8, 0), TieneRegistro: false),
         ];
-        IReadOnlyList<RegistroLeido> registros = [new(Firulais.Id, TipoDeber.Paseo, Hoy, new TimeOnly(7, 0))];
+        IReadOnlyList<RegistroLeido> registros = [new(1, Firulais.Id, TipoDeber.Paseo, Hoy, new TimeOnly(7, 0))];
 
         // Control: las secciones salen de las mascotas, no de las instancias ni de los registros.
         var soloMichi = ArmadoEstadoDelDia.Armar([Michi], instancias, registros, A(Hoy, 9, 0));
@@ -141,6 +141,51 @@ public class ArmadoEstadoDelDiaTests
 
         Assert.Equal([Michi.Id], soloMichi.Secciones.Select(s => s.MascotaId));
         Assert.Empty(sinMascotas.Secciones);
+    }
+
+    [Fact]
+    public void Armar_RegistrosHoy_OrdenadosPorHora()
+    {
+        IReadOnlyList<RegistroLeido> registros =
+        [
+            new(1, Firulais.Id, TipoDeber.Paseo, Hoy, new TimeOnly(11, 0)),
+            new(2, Firulais.Id, TipoDeber.Comida, Ayer, new TimeOnly(20, 0)),
+            new(3, Firulais.Id, TipoDeber.Comida, Hoy, new TimeOnly(8, 10)),
+            new(4, Firulais.Id, TipoDeber.Paseo, Hoy, new TimeOnly(9, 5)),
+            new(5, Michi.Id, TipoDeber.Paseo, Hoy, new TimeOnly(7, 0)),
+        ];
+
+        var estado = ArmadoEstadoDelDia.Armar(Mascotas, [], registros, A(Hoy, 12, 0));
+
+        // Solo los de hoy, de su mascota, de cualquier tipo, por hora real.
+        Assert.Equal(
+            [
+                new RegistroVista(3, TipoDeber.Comida, new TimeOnly(8, 10)),
+                new RegistroVista(4, TipoDeber.Paseo, new TimeOnly(9, 5)),
+                new RegistroVista(1, TipoDeber.Paseo, new TimeOnly(11, 0)),
+            ],
+            Seccion(estado, Firulais).RegistrosHoy);
+        Assert.Equal([new RegistroVista(5, TipoDeber.Paseo, new TimeOnly(7, 0))], Seccion(estado, Michi).RegistrosHoy);
+    }
+
+    [Fact]
+    public void Armar_UltimoQueEsDeHoy_NoSeDuplica()
+    {
+        // El servicio une "los de hoy" y "el último por tipo": el paseo 7 llega en las dos lecturas.
+        IReadOnlyList<RegistroLeido> registros =
+        [
+            new(7, Firulais.Id, TipoDeber.Paseo, Hoy, new TimeOnly(9, 5)),
+            new(8, Firulais.Id, TipoDeber.Comida, Ayer, new TimeOnly(20, 0)),
+            new(7, Firulais.Id, TipoDeber.Paseo, Hoy, new TimeOnly(9, 5)),
+        ];
+
+        var estado = ArmadoEstadoDelDia.Armar(Mascotas, [], registros, A(Hoy, 10, 0));
+
+        var firulais = Seccion(estado, Firulais);
+        Assert.Equal(1, firulais.PaseosHoy);
+        Assert.Equal([new RegistroVista(7, TipoDeber.Paseo, new TimeOnly(9, 5))], firulais.RegistrosHoy);
+        Assert.Equal(new UltimoRegistro(Hoy, new TimeOnly(9, 5)), firulais.UltimoPaseo);
+        Assert.Equal(new UltimoRegistro(Ayer, new TimeOnly(20, 0)), firulais.UltimaComida);
     }
 
     private static DateTime A(DateOnly dia, int hora, int minuto) => dia.ToDateTime(new TimeOnly(hora, minuto));

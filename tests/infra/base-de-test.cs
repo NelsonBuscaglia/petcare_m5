@@ -1,6 +1,7 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using PetCare.Features.Deberes.Domain;
+using PetCare.Features.Emails.Domain;
 using PetCare.Features.Instancias.Domain;
 using PetCare.Shared.Data;
 
@@ -61,10 +62,22 @@ public sealed class BaseDeTest : IDisposable
         return deber;
     }
 
-    public Instancia InsertarInstancia(int deberId, DateOnly fecha, TimeOnly hora)
+    public Instancia InsertarInstancia(
+        int deberId,
+        DateOnly fecha,
+        TimeOnly hora,
+        bool vencidaAlGenerarse = false,
+        DateTimeOffset? reactivadaEnUtc = null)
     {
         using var contexto = CrearContexto();
-        var instancia = new Instancia { DeberId = deberId, Fecha = fecha, Hora = hora };
+        var instancia = new Instancia
+        {
+            DeberId = deberId,
+            Fecha = fecha,
+            Hora = hora,
+            VencidaAlGenerarse = vencidaAlGenerarse,
+            ReactivadaEnUtc = reactivadaEnUtc,
+        };
         contexto.Instancias.Add(instancia);
         contexto.SaveChanges();
         return instancia;
@@ -82,6 +95,15 @@ public sealed class BaseDeTest : IDisposable
         contexto.RegistrosCumplimiento.Add(registro);
         contexto.SaveChanges();
         return registro;
+    }
+
+    public EmailVencimiento InsertarEmailVencimiento(int instanciaId, DateTimeOffset aceptadoEnUtc)
+    {
+        using var contexto = CrearContexto();
+        var email = new EmailVencimiento { InstanciaId = instanciaId, AceptadoEnUtc = aceptadoEnUtc };
+        contexto.EmailsVencimiento.Add(email);
+        contexto.SaveChanges();
+        return email;
     }
 
     public void Dispose() => conexion.Dispose();

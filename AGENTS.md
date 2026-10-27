@@ -40,6 +40,8 @@ Web app mobile-first para que los integrantes de un hogar vean y registren el cu
 | Framework | .NET 10 LTS |
 | Database | SQLite + EF Core 10 |
 | Test runner | xUnit |
+| Test command | `dotnet test petcare.slnx` (sin red: `--filter "Categoria!=Navegador"`) |
+| Typecheck | `dotnet build petcare.slnx --no-incremental` |
 | Autenticación | por cookie + `PasswordHasher<T>` |
 | Library | MailKit |
 

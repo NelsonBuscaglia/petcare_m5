@@ -13,6 +13,7 @@ public class InstanciaConfiguration : IEntityTypeConfiguration<Instancia>
         builder.HasKey(i => i.Id);
         builder.Property(i => i.Fecha).IsRequired();
         builder.Property(i => i.Hora).IsRequired();
+        builder.Property(i => i.VencidaAlGenerarse).IsRequired();
         builder.HasIndex(i => new { i.DeberId, i.Fecha }).IsUnique();
         builder.HasIndex(i => i.Fecha);
         builder.HasOne<Deber>()

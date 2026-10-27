@@ -1,0 +1,18 @@
+@model PetCare.Features.EstadoDelDia.Domain.FormularioCumplimientoVista
+
+<form method="post" action="/?handler=Cumplir" asp-antiforgery="true" data-formulario-cumplimiento
+      hx-post="/?handler=Cumplir" hx-target="#estado-del-dia" hx-swap="outerHTML"
+      hx-sync="closest #estado-del-dia:replace">
+    <input type="hidden" name="instanciaId" value="@Model.InstanciaId">
+    <label>
+        Hora real
+        <input type="time" name="horaReal" value="@Model.HoraPropuesta" data-testid="hora-real">
+    </label>
+    @if (Model.Error is not null)
+    {
+        <p data-testid="error-cumplimiento" role="alert">@Model.Error</p>
+    }
+    <button type="submit" data-testid="confirmar">Confirmar</button>
+    <a href="/" hx-get="/?handler=Estado" hx-target="#estado-del-dia" hx-swap="outerHTML"
+       hx-sync="closest #estado-del-dia:replace" data-testid="cancelar">Cancelar</a>
+</form>

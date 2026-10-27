@@ -11,4 +11,13 @@ public class Instancia
 
     /// <summary>Copia de <c>Deber.Hora</c> al momento de generarse.</summary>
     public TimeOnly Hora { get; set; }
+
+    /// <summary>
+    /// Ya estaba vencida cuando se creó (alta con hora pasada o generación tardía, FR-14): no
+    /// dispara el email de vencimiento.
+    /// </summary>
+    public bool VencidaAlGenerarse { get; set; }
+
+    /// <summary>Último momento en que se eliminó su registro y volvió a ser vigente (UTC, offset cero).</summary>
+    public DateTimeOffset? ReactivadaEnUtc { get; set; }
 }

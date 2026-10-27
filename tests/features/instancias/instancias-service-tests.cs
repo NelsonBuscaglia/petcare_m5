@@ -87,6 +87,39 @@ public sealed class InstanciasServiceTests : IDisposable
         Assert.Equal([(deber.Id, Hoy, Ocho)], await Instancias());
     }
 
+    [Fact]
+    public async Task GenerarDelDia_TrasCaida_MarcaVencidaAlGenerarse()
+    {
+        // La app estuvo caída a la medianoche y genera a las 10:00 (13:00 UTC): la de las 08:00
+        // ya venció a las 08:15.
+        var deber = baseDeTest.InsertarDeber(Firulais, TipoDeber.Comida, Ocho, Repeticion.TodosLosDias, Hoy.AddDays(-1));
+        reloj.SetUtcNow(new DateTimeOffset(2026, 10, 25, 13, 0, 0, TimeSpan.Zero));
+
+        var resultado = await Generar();
+
+        Assert.Equal(1, resultado.Valor);
+        var instancia = Assert.Single(await InstanciasCompletas());
+        Assert.Equal((deber.Id, Hoy), (instancia.DeberId, instancia.Fecha));
+        Assert.True(instancia.VencidaAlGenerarse);
+        Assert.Null(instancia.ReactivadaEnUtc);
+    }
+
+    [Fact]
+    public async Task GenerarDelDia_ALas0005_NoMarcaVencidaAlGenerarse()
+    {
+        var deber = baseDeTest.InsertarDeber(Firulais, TipoDeber.Comida, Ocho, Repeticion.TodosLosDias, Hoy);
+        baseDeTest.InsertarInstancia(deber.Id, Hoy, Ocho, vencidaAlGenerarse: true);
+        // 03:05 UTC del 26/10 = 00:05 en UTC−3.
+        reloj.SetUtcNow(new DateTimeOffset(2026, 10, 26, 3, 5, 0, TimeSpan.Zero));
+
+        var resultado = await Generar();
+
+        Assert.Equal(1, resultado.Valor);
+        var deManana = Assert.Single(await InstanciasCompletas(), i => i.Fecha == Manana);
+        Assert.False(deManana.VencidaAlGenerarse);
+        Assert.Null(deManana.ReactivadaEnUtc);
+    }
+
     private async Task<PetCare.Shared.Resultados.Resultado<int, GeneracionError>> Generar()
     {
         await using var contexto = baseDeTest.CrearContexto();
@@ -98,5 +131,11 @@ public sealed class InstanciasServiceTests : IDisposable
         await using var contexto = baseDeTest.CrearContexto();
         var filas = await contexto.Instancias.OrderBy(i => i.Fecha).ToListAsync();
         return filas.Select(i => (i.DeberId, i.Fecha, i.Hora)).ToList();
+    }
+
+    private async Task<List<Instancia>> InstanciasCompletas()
+    {
+        await using var contexto = baseDeTest.CrearContexto();
+        return await contexto.Instancias.OrderBy(i => i.Fecha).ToListAsync();
     }
 }

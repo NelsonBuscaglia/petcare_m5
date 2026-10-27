@@ -110,6 +110,38 @@ public sealed class DeberesServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task DarDeAlta_HoraYaVencida_MarcaVencidaAlGenerarse()
+    {
+        // 13:30 UTC = 10:30 en UTC−3: el paseo de las 10:00 venció a las 10:15.
+        reloj.SetUtcNow(new DateTimeOffset(2026, 10, 25, 13, 30, 0, TimeSpan.Zero));
+        await using var contexto = baseDeTest.CrearContexto();
+
+        var resultado = await CrearServicio(contexto).DarDeAltaAsync(Firulais, "paseo", "10:00", "solo-hoy", CancellationToken.None);
+
+        Assert.True(resultado.EsOk);
+        await using var verificacion = baseDeTest.CrearContexto();
+        var instancia = await verificacion.Instancias.SingleAsync();
+        Assert.True(instancia.VencidaAlGenerarse);
+        Assert.Null(instancia.ReactivadaEnUtc);
+    }
+
+    [Fact]
+    public async Task DarDeAlta_HoraFutura_NoMarcaVencidaAlGenerarse()
+    {
+        // Reloj inicial: 12:00 UTC = 09:00 en UTC−3.
+        await using var contexto = baseDeTest.CrearContexto();
+
+        var resultado = await CrearServicio(contexto).DarDeAltaAsync(Firulais, "paseo", "18:00", "todos-los-dias", CancellationToken.None);
+
+        Assert.True(resultado.EsOk);
+        await using var verificacion = baseDeTest.CrearContexto();
+        var instancia = await verificacion.Instancias.SingleAsync();
+        Assert.Equal(new TimeOnly(18, 0), instancia.Hora);
+        Assert.False(instancia.VencidaAlGenerarse);
+        Assert.Null(instancia.ReactivadaEnUtc);
+    }
+
+    [Fact]
     public async Task ListarActivos_SoloHoyDeAyerNoCumplido_NoAparece()
     {
         var deAyer = baseDeTest.InsertarDeber(Firulais, TipoDeber.Comida, new TimeOnly(8, 0), Repeticion.SoloHoy, Ayer);

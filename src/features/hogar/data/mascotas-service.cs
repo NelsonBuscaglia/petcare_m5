@@ -11,10 +11,4 @@ public sealed class MascotasService(PetCareDbContext db)
             .Where(m => m.Id == id)
             .Select(m => new MascotaVista(m.Id, m.Nombre))
             .SingleOrDefaultAsync(cancellationToken);
-
-    public async Task<IReadOnlyList<MascotaVista>> ListarAsync(CancellationToken cancellationToken) =>
-        await db.Mascotas
-            .OrderBy(m => m.Nombre)
-            .Select(m => new MascotaVista(m.Id, m.Nombre))
-            .ToListAsync(cancellationToken);
 }

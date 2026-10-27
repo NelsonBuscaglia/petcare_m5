@@ -25,6 +25,10 @@ public static class TextosEstadoDelDia
     public static string Instancia(InstanciaVista instancia) =>
         $"{Tipo(instancia.Tipo)} · {instancia.Hora.ToString("HH:mm", CultureInfo.InvariantCulture)}";
 
+    /// <summary>Registro de hoy de la lista "Registrado hoy", p. ej. "Paseo · 09:05" (FR-08).</summary>
+    public static string Registro(RegistroVista registro) =>
+        $"{Tipo(registro.Tipo)} · {registro.HoraReal.ToString("HH:mm", CultureInfo.InvariantCulture)}";
+
     public static string UltimaComida(UltimoRegistro? registro) =>
         registro is null ? "Sin comidas registradas" : $"Última comida: {FechaHora(registro)}";
 

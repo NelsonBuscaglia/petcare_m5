@@ -11,7 +11,8 @@ public sealed record SeccionMascota(
     IReadOnlyList<InstanciaVista> Instancias,
     int PaseosHoy,
     UltimoRegistro? UltimaComida,
-    UltimoRegistro? UltimoPaseo)
+    UltimoRegistro? UltimoPaseo,
+    IReadOnlyList<RegistroVista> RegistrosHoy)
 {
     public bool SinTareasPendientes => Instancias.Count == 0;
 }
@@ -21,3 +22,6 @@ public sealed record InstanciaVista(int Id, TipoDeber Tipo, TimeOnly Hora, bool 
 
 /// <summary>Último cumplimiento registrado de un tipo, de cualquier día (FR-15, FR-16).</summary>
 public sealed record UltimoRegistro(DateOnly Fecha, TimeOnly HoraReal);
+
+/// <summary>Registro de cumplimiento de hoy, eliminable desde el estado del día (FR-08, FR-09).</summary>
+public sealed record RegistroVista(int Id, TipoDeber Tipo, TimeOnly HoraReal);

@@ -64,6 +64,85 @@ public class ArranqueTests
     }
 
     [Fact]
+    public void Arranque_DevelopmentConSmtp_Falla()
+    {
+        using var fabricaBase = new PetCareAppFactory(migrar: false);
+        using var factory = fabricaBase.WithWebHostBuilder(b =>
+        {
+            b.UseEnvironment("Development");
+            b.UseSetting("Email:Modo", "Smtp");
+            b.UseSetting("Email:Smtp:Host", "smtp.ejemplo.com");
+            b.UseSetting("Email:Smtp:Remitente", "avisos@ejemplo.com");
+        });
+
+        var error = Assert.Throws<InvalidOperationException>(() => factory.CreateClient());
+
+        Assert.Contains("Development", error.Message);
+        Assert.StartsWith("Configuración de email inválida", error.Message);
+    }
+
+    [Fact]
+    public void Arranque_SmtpSinHost_Falla()
+    {
+        using var fabricaBase = new PetCareAppFactory(migrar: false);
+        using var factory = fabricaBase.WithWebHostBuilder(b =>
+        {
+            b.UseEnvironment("Production");
+            b.UseSetting("Email:Modo", "Smtp");
+            b.UseSetting("Email:Smtp:Remitente", "avisos@ejemplo.com");
+            b.UseSetting("Email:Smtp:Usuario", "avisos-usuario");
+            b.UseSetting("Email:Smtp:Clave", "clave-secreta-de-prueba");
+        });
+
+        var error = Assert.Throws<InvalidOperationException>(() => factory.CreateClient());
+
+        Assert.Contains("Email:Smtp:Host", error.Message);
+        Assert.DoesNotContain("clave-secreta-de-prueba", error.Message);
+    }
+
+    [Theory]
+    [InlineData("0")]
+    [InlineData("16")]
+    public void Arranque_RefrescoInvalido_Falla(string segundos)
+    {
+        using var fabricaBase = new PetCareAppFactory(migrar: false);
+        using var factory = fabricaBase.WithWebHostBuilder(b => b.UseSetting("EstadoDelDia:RefrescoSegundos", segundos));
+
+        var error = Assert.Throws<InvalidOperationException>(() => factory.CreateClient());
+
+        Assert.Equal(
+            "Configuración del estado del día inválida: EstadoDelDia:RefrescoSegundos debe estar entre 1 y 15.",
+            error.Message);
+    }
+
+    [Fact]
+    public void Arranque_AppSettingsSinCredencialesSmtp()
+    {
+        var src = Path.Combine(RaizDelRepo(), "src");
+        using (var appsettings = LeerJson(Path.Combine(src, "appsettings.json")))
+        {
+            Assert.True(appsettings.RootElement.TryGetProperty("Email", out var email), "appsettings.json no define la sección Email.");
+            Assert.Equal("Consola", email.GetProperty("Modo").GetString());
+        }
+
+        var archivos = Directory.GetFiles(src, "appsettings*.json")
+            .Append(Path.Combine(src, "Properties", "launchSettings.json"));
+        foreach (var archivo in archivos)
+        {
+            using var documento = LeerJson(archivo);
+            var claves = ClavesPlanas(documento.RootElement, "").ToList();
+            foreach (var prohibida in new[] { "Usuario", "Clave", "Host" })
+            {
+                Assert.DoesNotContain(claves, c =>
+                    c.Equals($"Email:Smtp:{prohibida}", StringComparison.OrdinalIgnoreCase)
+                    || c.EndsWith($":Email__Smtp__{prohibida}", StringComparison.OrdinalIgnoreCase));
+            }
+
+            Assert.DoesNotContain(claves, c => c.StartsWith("Email:Smtp", StringComparison.OrdinalIgnoreCase));
+        }
+    }
+
+    [Fact]
     public async Task Error_ExcepcionEnProduccion_Devuelve500Generico()
     {
         using var fabricaBase = new PetCareAppFactory();
@@ -110,6 +189,25 @@ public class ArranqueTests
         Assert.Contains(MensajeGenerico, TextoVisible(cuerpo));
         Assert.DoesNotContain("SqliteException", cuerpo);
         Assert.DoesNotContain("no such table", cuerpo);
+    }
+
+    /// <summary>Claves "A:B:C" de un JSON, como las vería <c>IConfiguration</c>.</summary>
+    private static IEnumerable<string> ClavesPlanas(JsonElement elemento, string prefijo)
+    {
+        if (elemento.ValueKind != JsonValueKind.Object)
+        {
+            yield break;
+        }
+
+        foreach (var propiedad in elemento.EnumerateObject())
+        {
+            var clave = prefijo.Length == 0 ? propiedad.Name : $"{prefijo}:{propiedad.Name}";
+            yield return clave;
+            foreach (var hija in ClavesPlanas(propiedad.Value, clave))
+            {
+                yield return hija;
+            }
+        }
     }
 
     private static string TextoVisible(string html) =>
