@@ -11,7 +11,7 @@
 | Sub-ticket | Título | PRD | Dependencias | Estado |
 |---|---|---|---|---|
 | FEAT-001a | Deberes de comida y paseo: alta, instancias y estado del día | prd-FEAT-001a.md | ninguna | done — mergeado en main (bfbc334, PR #1) |
-| FEAT-001b | Cumplimiento, email de vencimiento y actualización automática del estado del día | prd-FEAT-001b.md | depende de a | active |
+| FEAT-001b | Cumplimiento, email de vencimiento y actualización automática del estado del día | prd-FEAT-001b.md | depende de a | done — mergeado en main (4c3db35, PR #2) |
 
 ## Orden de implementación sugerido
 
